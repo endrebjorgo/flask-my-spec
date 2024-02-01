@@ -9,30 +9,31 @@ def load_spec(file_path):
         exit(1)
 
     f = open(file_path)
-
     if extension == ".json":
         return json.load(f)
     else:
         return yaml.safe_load(f) 
-
     f.close()
 
-def generate_route(spec, path):
-    decorator = generate_decorator(spec, path)
-    requests = spec["paths"][path].keys()
-    print(path, requests)
-    return f"@app.route(\"{path}\")"
-    return 
-
 def get_decorator(spec, path):
-    methods = ", ".join([r.upper() for r in spec["paths"][path].keys()])
+    methods = ", ".join([r.upper() for r in spec["paths"][path].keys()]) 
     return f"@app.route(\"{path}\", methods=[{methods}])"
      
 def get_function_head(spec, path):
-    return "head"
+    function_name = "root"
+    if path != "/":
+        function_name = function_name + "_".join(path.split("/"))
+    return f"def {function_name}():"
 
 def get_function_body(spec, path):
-    return "body"
+    methods = [r.upper() for r in spec["paths"][path].keys()] 
+    lines = list()
+    for i, m in enumerate(methods):
+        else_opt  = "" if i == 0 else "el"
+        lines.append(f"\t{else_opt}if request.method == \"{m}\":\n")
+        lines.append("\t\tpass\n")
+
+    return lines
 
 def get_route(spec, path):
     decorator = get_decorator(spec, path)
@@ -53,10 +54,17 @@ if __name__ == "__main__":
     filename =  api_spec["info"]["title"].lower().replace(" ", "_") + ".py"
 
     with open(filename, "w") as f:
-        f.writelines([
-            "from flask import Flask\n", 
-            "app = Flask(__name__)\n"
-            ])
+        f.write("from flask import Flask\n")
+        f.write("\n")
+        f.write("app = Flask(__name__)\n")
+        f.write("\n")
 
         for path in api_spec["paths"]:
-            f.writelines(get_route(api_spec, path))
+            decorator = get_decorator(api_spec, path)
+            function_head = get_function_head(api_spec, path)
+            function_body = get_function_body(api_spec, path)
+
+            f.write(decorator + "\n")
+            f.write(function_head + "\n")
+            f.writelines(function_body)
+            f.write("\n")
