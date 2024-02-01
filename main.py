@@ -1,15 +1,16 @@
 import sys
+import pathlib
 import json
 import yaml
 
 def load_spec(file_path):
-    extension = file_path[-5:]
-    if extension not in [".json", ".yaml", ".yml"]:
+    ext = pathlib.Path(file_path).suffix
+    if ext not in [".json", ".yaml", ".yml"]:
         print("ERROR: File of wrong format")
         exit(1)
 
     f = open(file_path)
-    if extension == ".json":
+    if ext == ".json":
         return json.load(f)
     else:
         return yaml.safe_load(f) 
