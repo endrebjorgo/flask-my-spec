@@ -21,10 +21,21 @@ def get_decorator(spec, path):
     return f"@app.route(\"{path}\", methods=[{methods}])"
      
 def get_function_head(spec, path):
-    function_name = "root"
-    if path != "/":
-        function_name = function_name + "_".join(path.split("/"))
-    return f"def {function_name}():"
+    components = ["root"]
+    arguments = list()
+
+    for c in path.split("/"):
+        if len(c) == 0: continue
+
+        if c[0] == "{" and c[-1] == "}":
+            components.append(c[1:-1])
+            arguments.append(c[1:-1])
+        else:
+            components.append(c)
+
+    function_name = "_".join(components)
+    argument_str = ", ".join(arguments)
+    return f"def {function_name}({argument_str}):"
 
 def get_function_body(spec, path):
     methods = [r.upper() for r in spec["paths"][path].keys()] 
@@ -35,12 +46,6 @@ def get_function_body(spec, path):
         lines.append("\t\tpass\n")
 
     return lines
-
-def get_route(spec, path):
-    decorator = get_decorator(spec, path)
-    func_head = get_function_head(spec, path)
-    func_body = get_function_body(spec, path)
-    return [decorator, func_head, func_body]
 
 if __name__ == "__main__":
     argv = sys.argv
