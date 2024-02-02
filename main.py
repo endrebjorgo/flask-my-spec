@@ -17,8 +17,9 @@ def load_spec(file_path):
     f.close()
 
 def get_decorator(spec, path):
-    methods = ", ".join([r.upper() for r in spec["paths"][path].keys()]) 
-    return f"@app.route(\"{path}\", methods=[{methods}])"
+    methods = spec["paths"][path].keys()
+    method_str = ", ".join([f"\"{m.upper()}\"" for m in methods])
+    return f"@app.route(\"{path}\", methods=[{method_str}])"
      
 def get_function_head(spec, path):
     components = ["root"]
