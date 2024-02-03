@@ -3,8 +3,8 @@ import pathlib
 import json
 import yaml
 
-REQS = ["get", "head", "post", "put", "delete", "connect",
-                  "options", "trace", "patch"]
+REQS = ["get", "head", "post", "put", "delete", 
+        "connect", "options", "trace", "patch"]
 
 def load_spec(file_path):
     ext = pathlib.Path(file_path).suffix
@@ -18,40 +18,54 @@ def load_spec(file_path):
         else:
             return yaml.safe_load(f) 
 
+def generate_filename(api_spec):
+    title = api_spec["info"]["title"]
+    return title.lower().replace(" ", "_") + ".py"
 
-def get_decorator(spec, path):
-    methods = [r for r in spec["paths"][path].keys() if r in REQS]
-    method_str = ", ".join([f"\"{m.upper()}\"" for m in methods])
-    return f"@app.route(\"{path}\", methods=[{method_str}])"
-     
-def get_function_head(spec, path):
-    components = ["root"]
-    arguments = list()
+def write_header():
+    f.write("from flask import Flask, Response\n")
+    f.write("\n")
+    f.write("app = Flask(__name__)\n")
+    f.write("\n")
 
-    for c in path.split("/"):
-        if len(c) == 0: continue
+def write_body(f, spec):
+    for path in spec["paths"]:
+        write_decorator(f, spec, path)
+        write_func_def(f, spec, path)
+        write_func_body(f, spec, path)
 
-        if c[0] == "{" and c[-1] == "}":
-            components.append(c[1:-1])
-            arguments.append(c[1:-1])
+def write_decorator(f, spec, path):
+    path_children = spec["paths"][path].keys()
+    http_methods = [r for r in path_children if r in REQS]
+    method_str = ", ".join([f'"{m.upper()}"' for m in http_methods])
+    f.write(f"@app.route(\"{path}\", methods=[{method_str}])\n")
+
+def write_func_def(f, spec, path):
+    strs = ["root"]
+    param_list = list()
+
+    for s in path.split("/"):
+        if len(s) == 0: continue
+
+        if s[0] == "{" and s[-1] == "}":
+            strs.append(s[1:-1])
+            param_list.append(s[1:-1])
         else:
-            components.append(c)
+            strs.append(s)
 
-    function_name = "_".join(components)
-    argument_str = ", ".join(arguments)
-    return f"def {function_name}({argument_str}):"
+    function_name = "_".join(strs)
+    param_list_str = ", ".join(param_list)
+    f.write(f"def {function_name}({param_list_str}):\n")
 
-def get_function_body(spec, path):
-    methods = [r.upper() for r in spec["paths"][path].keys() if r in REQS] 
-    lines = list()
-    for i, m in enumerate(methods):
+def write_func_body(f, spec, path):
+    path_children = spec["paths"][path].keys()
+    http_methods = [r.upper() for r in path_children if r in REQS]
+    for i, m in enumerate(http_methods):
         else_opt  = "" if i == 0 else "el"
-        lines.append(f"\t{else_opt}if request.method == \"{m}\":\n")
-        lines.append("\t\tpass\n")
-    lines.append(f"\telse:\n")
-    lines.append("\t\tpass\n")
-
-    return lines
+        f.write(f'\t{else_opt}if request.method == "{m}":\n')
+        f.write("\t\tpass\n")
+    f.write(f"\telse:\n")
+    f.write("\t\tpass\n\n")
 
 if __name__ == "__main__":
     argv = sys.argv
@@ -63,20 +77,11 @@ if __name__ == "__main__":
 
     api_spec = load_spec(argv[1])
 
-    filename =  api_spec["info"]["title"].lower().replace(" ", "_") + ".py"
+    filename = generate_filename(api_spec) 
+    
+    f = open(filename, "w")
 
-    with open(filename, "w") as f:
-        f.write("from flask import Flask\n")
-        f.write("\n")
-        f.write("app = Flask(__name__)\n")
-        f.write("\n")
-
-        for path in api_spec["paths"]:
-            decorator = get_decorator(api_spec, path)
-            function_head = get_function_head(api_spec, path)
-            function_body = get_function_body(api_spec, path)
-
-            f.write(decorator + "\n")
-            f.write(function_head + "\n")
-            f.writelines(function_body)
-            f.write("\n")
+    write_header()
+    write_body(f, api_spec) 
+    
+    f.close()
