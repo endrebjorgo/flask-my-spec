@@ -9,12 +9,12 @@ def load_spec(file_path):
         print("ERROR: File of wrong format")
         exit(1)
 
-    f = open(file_path)
-    if ext == ".json":
-        return json.load(f)
-    else:
-        return yaml.safe_load(f) 
-    f.close()
+    with open(file_path) as f:
+        if ext == ".json":
+            return json.load(f)
+        else:
+            return yaml.safe_load(f) 
+
 
 def get_decorator(spec, path):
     methods = spec["paths"][path].keys()
