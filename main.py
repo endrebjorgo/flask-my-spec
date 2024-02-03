@@ -38,7 +38,8 @@ def write_decorator(f, spec, path):
     path_children = spec["paths"][path].keys()
     http_methods = [r for r in path_children if r in REQS]
     method_str = ", ".join([f'"{m.upper()}"' for m in http_methods])
-    f.write(f"@app.route(\"{path}\", methods=[{method_str}])\n")
+    new_path = path.replace("{", "<").replace("}", ">")
+    f.write(f"@app.route(\"{new_path}\", methods=[{method_str}])\n")
 
 def write_func_def(f, spec, path):
     strs = ["root"]
