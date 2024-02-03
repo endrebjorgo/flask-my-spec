@@ -3,10 +3,13 @@ import pathlib
 import json
 import yaml
 
+REQS = ["get", "head", "post", "put", "delete", "connect",
+                  "options", "trace", "patch"]
+
 def load_spec(file_path):
     ext = pathlib.Path(file_path).suffix
     if ext not in [".json", ".yaml", ".yml"]:
-        print("ERROR: File of wrong format")
+        print("ERROR: File of wrong format", file=sys.stderr)
         exit(1)
 
     with open(file_path) as f:
@@ -17,7 +20,7 @@ def load_spec(file_path):
 
 
 def get_decorator(spec, path):
-    methods = spec["paths"][path].keys()
+    methods = [r for r in spec["paths"][path].keys() if r in REQS]
     method_str = ", ".join([f"\"{m.upper()}\"" for m in methods])
     return f"@app.route(\"{path}\", methods=[{method_str}])"
      
@@ -39,12 +42,14 @@ def get_function_head(spec, path):
     return f"def {function_name}({argument_str}):"
 
 def get_function_body(spec, path):
-    methods = [r.upper() for r in spec["paths"][path].keys()] 
+    methods = [r.upper() for r in spec["paths"][path].keys() if r in REQS] 
     lines = list()
     for i, m in enumerate(methods):
         else_opt  = "" if i == 0 else "el"
         lines.append(f"\t{else_opt}if request.method == \"{m}\":\n")
         lines.append("\t\tpass\n")
+    lines.append(f"\telse:\n")
+    lines.append("\t\tpass\n")
 
     return lines
 
@@ -53,7 +58,7 @@ if __name__ == "__main__":
     argc = len(argv)
 
     if argc != 2:
-        print("ERROR: Please supply one file")
+        print("ERROR: Please supply one file", file=sys.stderr)
         exit(1)
 
     api_spec = load_spec(argv[1])
