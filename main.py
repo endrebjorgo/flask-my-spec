@@ -23,7 +23,7 @@ def generate_filename(api_spec):
     return title.lower().replace(" ", "_") + ".py"
 
 def write_header():
-    f.write("from flask import Flask, Response\n")
+    f.write("from flask import Flask, Response, request\n")
     f.write("\n")
     f.write("app = Flask(__name__)\n")
     f.write("\n")
@@ -63,9 +63,15 @@ def write_func_body(f, spec, path):
     for i, m in enumerate(http_methods):
         else_opt  = "" if i == 0 else "el"
         f.write(f'\t{else_opt}if request.method == "{m}":\n')
-        f.write("\t\tpass\n")
+        response = generate_response(spec, path, m)
+        f.write(f"\t\treturn {response}\n")
     f.write(f"\telse:\n")
     f.write("\t\tpass\n\n")
+
+def generate_response(spec, path, http_method):
+    http_method = http_method.lower()
+    return 'Response(response={"foo": "bar"}, status=200)'
+
 
 if __name__ == "__main__":
     argv = sys.argv
