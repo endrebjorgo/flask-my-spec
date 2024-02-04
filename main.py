@@ -18,6 +18,46 @@ def load_spec(file_path):
         else:
             return yaml.safe_load(f) 
 
+def expand_spec_refs(spec, *args):
+    ref_found = True
+
+    while ref_found: # Gotta check if this is necessary
+        ref_found = False
+        curr = spec
+        for arg in args:
+            curr = curr[arg]
+
+        if isinstance(curr, dict):
+            keys = curr.keys()
+        else:
+            keys = range(len(curr))
+
+        for key in keys:
+            if key == "$ref":
+                ref_found = True
+                new_ref = get_value_at_ref(spec, curr.copy()["$ref"])
+                set_ref(spec, new_ref, *args)
+                continue
+            elif not isinstance(curr[key], (dict, list)):
+                continue
+
+            expand_spec_refs(spec, *args, key)
+
+def set_ref(spec, new_val, *args):
+    curr = spec 
+
+    for arg in args[:-1]:
+        curr = curr[arg]
+
+    curr[args[-1]] = new_val
+
+def get_value_at_ref(spec, ref):
+    path = ref.split("/")[1:]
+    curr = spec
+    for key in path:
+        curr = curr[key]
+    return curr
+
 def generate_filename(api_spec):
     title = api_spec["info"]["title"]
     return title.lower().replace(" ", "_") + ".py"
@@ -71,8 +111,12 @@ def write_func_body(f, spec, path):
 
 def generate_response(spec, path, http_method):
     http_method = http_method.lower()
-    return 'Response(response={"foo": "bar"}, status=200)'
+    responses = spec["paths"][path][http_method]["responses"]
 
+    schema = responses["200"]["content"]["application/json"]["schema"]
+    return schema
+
+    return 'Response(response={"foo": "bar"}, status=200)'
 
 if __name__ == "__main__":
     argv = sys.argv
@@ -83,6 +127,7 @@ if __name__ == "__main__":
         exit(1)
 
     api_spec = load_spec(argv[1])
+    expand_spec_refs(api_spec)
 
     filename = generate_filename(api_spec) 
     
